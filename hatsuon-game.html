@@ -1,0 +1,902 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>はつおん まるばつ</title>
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-title" content="はつおん">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700;900&display=swap" rel="stylesheet">
+<style>
+/* 画面構成: 上にカテゴリ、中央に大きなお題カード、下にマイク。先生の赤ペンのように◯と×をカードに直接描く */
+:root{
+  --bg:#E8F1F7;
+  --surface:#FFFFFF;
+  --ink:#13283B;
+  --muted:#587084;
+  --line:#CBDCE8;
+  --maru:#E5432A;
+  --batsu:#2B6AD8;
+  --listen:#F5B301;
+  --mic-bg:#13283B;
+  --mic-fg:#FFFFFF;
+  --chip-on:#13283B;
+  --chip-on-fg:#FFFFFF;
+  --shadow:rgba(19,40,59,.22);
+  --ground:#CFE1EE;
+  --k-line:#1F1630;
+  --k-body:#67B96B;
+  --k-belly:#CDEBB0;
+  --k-spike:#F2A33A;
+  --font:"Zen Maru Gothic","Hiragino Maru Gothic ProN","Hiragino Sans","Yu Gothic",Meiryo,sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --bg:#0E1A25;
+    --surface:#16293A;
+    --ink:#EAF3FA;
+    --muted:#92A9BB;
+    --line:#26405A;
+    --maru:#FF6A50;
+    --batsu:#74A6FF;
+    --mic-bg:#EAF3FA;
+    --mic-fg:#0E1A25;
+    --chip-on:#EAF3FA;
+    --chip-on-fg:#0E1A25;
+    --shadow:rgba(0,0,0,.45);
+    --ground:#223B52;
+    color-scheme:dark;
+  }
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0}
+body{
+  background:var(--bg);
+  color:var(--ink);
+  font-family:var(--font);
+  font-weight:500;
+  min-height:100vh;
+  min-height:100dvh;
+  -webkit-tap-highlight-color:transparent;
+}
+button{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--batsu);outline-offset:3px}
+
+.app{
+  max-width:560px;
+  margin:0 auto;
+  display:grid;
+  gap:18px;
+  padding-top:max(16px,env(safe-area-inset-top,0px));
+  padding-bottom:max(28px,env(safe-area-inset-bottom,0px));
+  padding-left:max(16px,env(safe-area-inset-left,0px));
+  padding-right:max(16px,env(safe-area-inset-right,0px));
+}
+header h1{margin:0;font-size:1.5rem;font-weight:900;letter-spacing:.04em}
+header p{margin:4px 0 0;color:var(--muted);font-size:.95rem}
+
+.notice{
+  margin:0;padding:12px 14px;border-radius:14px;
+  background:var(--surface);border:2px solid var(--batsu);
+  font-size:.92rem;line-height:1.6;
+}
+
+.cats{display:flex;flex-wrap:wrap;gap:8px}
+.chip{
+  border:2px solid var(--line);background:var(--surface);
+  padding:9px 16px;border-radius:999px;font-weight:700;cursor:pointer;
+}
+.chip[aria-pressed="true"]{background:var(--chip-on);color:var(--chip-on-fg);border-color:var(--chip-on)}
+
+.dots{display:flex;flex-wrap:wrap;justify-content:center;gap:9px;min-height:24px;align-items:center}
+.dot{width:18px;height:18px;border-radius:50%;border:2px solid var(--line);position:relative;transition:transform .2s}
+.dot.now{border-color:var(--ink);transform:scale(1.25)}
+.dot.ok{background:var(--maru);border-color:var(--maru)}
+.dot.skip{border-color:var(--batsu)}
+.dot.skip::after{content:"×";position:absolute;inset:0;display:grid;place-items:center;font-size:15px;line-height:1;font-weight:900;color:var(--batsu)}
+
+/* ---- リング：怪獣とグローブ ---- */
+.ring{position:relative;overflow:hidden;border:2px solid var(--line);border-radius:28px;background:var(--surface)}
+.scene{display:block;width:100%;height:clamp(150px,27vh,200px)}
+.ropes path{fill:none;stroke:var(--line);stroke-width:4;stroke-linecap:round}
+.ground{fill:var(--ground)}
+.groundline{fill:none;stroke:var(--line);stroke-width:3}
+.ol{stroke:var(--k-line);stroke-width:3;stroke-linejoin:round}
+.c-body{fill:var(--k-body)}
+.c-belly{fill:var(--k-belly)}
+.c-spike{fill:var(--k-spike)}
+.c-horn{fill:#F4E7C5}
+.eye{fill:#fff}
+.pupil{fill:var(--k-line)}
+.brow,.xeye{fill:none;stroke:var(--k-line);stroke-width:4;stroke-linecap:round}
+.mouthfill{fill:var(--k-line)}
+.teeth{fill:#fff}
+.tongue{fill:#E8647A}
+.arm{fill:#F2C29B}
+.cuff{fill:#fff}
+.cuffstripe{fill:#E5432A}
+.gl{fill:#E5432A}
+.gloss{fill:#fff;opacity:.5}
+.burst-shape{fill:#FFD93B;stroke:var(--k-line);stroke-width:3;stroke-linejoin:round}
+.burst-text{fill:var(--k-line);font-family:var(--font);font-weight:900;font-size:16px}
+.kotext{fill:var(--maru);stroke:var(--surface);stroke-width:6;paint-order:stroke;stroke-linejoin:round;
+  font-family:var(--font);font-weight:900;font-size:42px;
+  opacity:0;transform-box:fill-box;transform-origin:center;transform:rotate(-8deg)}
+.star{fill:#FFD93B;stroke:var(--k-line);stroke-width:1.5;stroke-linejoin:round}
+
+.kaiju{transform-origin:0 0}
+.kbody{transform-origin:0 0;animation:breathe 2.6s ease-in-out infinite}
+.gbob{animation:guard 1s ease-in-out infinite}
+.eyesKO,.mouthKO{opacity:0}
+.burst{opacity:0;transform-box:fill-box;transform-origin:center}
+.starsw{opacity:0}
+.stars{transform-origin:0 0}
+
+[data-fx="enter"] .kaiju{animation:enter .65s both}
+[data-fx="taunt"] .kaiju{animation:taunt .9s ease-in-out both}
+[data-fx="taunt"] .glove{animation:flinch .4s both}
+
+[data-fx="ko"] .kbody{animation:none}
+[data-fx="ko"] .kaiju{transform:translate(10px,-50px) rotate(90deg);animation:ko 2.4s both}
+[data-fx="ko"] .glove{animation:punch 1.5s both}
+[data-fx="ko"] .scene{animation:shake .38s .41s}
+[data-fx="ko"] .eyes,[data-fx="ko"] .mouth{opacity:0;animation:fadeOut .01s .41s both}
+[data-fx="ko"] .eyesKO,[data-fx="ko"] .mouthKO{opacity:1;animation:fadeIn .01s .41s both}
+[data-fx="ko"] .burst{animation:burst .55s .41s both}
+[data-fx="ko"] .kotext{opacity:1;animation:kopop .5s .95s both}
+[data-fx="ko"] .starsw{opacity:1;animation:fadeIn .2s 1.05s both}
+[data-fx="ko"] .stars{animation:spin 1.4s linear infinite}
+
+@keyframes breathe{0%,100%{transform:scale(1,1)}50%{transform:scale(1.015,1.03)}}
+@keyframes guard{0%,100%{transform:translate(0,0)}50%{transform:translate(4px,-3px)}}
+@keyframes enter{0%{transform:translate(0,-150px);opacity:0}55%{transform:translate(0,0) scale(1.12,.86);opacity:1}75%{transform:scale(.96,1.06)}100%{transform:none;opacity:1}}
+@keyframes taunt{0%,100%{transform:none}15%{transform:translateY(-8px) scale(1.05)}35%{transform:rotate(-5deg)}55%{transform:rotate(5deg)}75%{transform:rotate(-3deg)}}
+@keyframes flinch{0%,100%{transform:none}30%{transform:translateX(-8px)}60%{transform:translateX(3px)}}
+@keyframes punch{0%{transform:translate(0,0)}12%{transform:translate(-16px,3px)}27%,38%{transform:translate(62px,-2px)}65%,100%{transform:translate(0,0)}}
+@keyframes ko{
+  0%,17%{transform:none}
+  19%{transform:translate(-5px,0) scale(.93,1.05)}
+  25%{transform:translate(8px,-16px) rotate(16deg)}
+  40%{transform:translate(16px,-34px) rotate(52deg)}
+  54%{transform:translate(10px,-50px) rotate(90deg)}
+  60%{transform:translate(10px,-58px) rotate(86deg)}
+  66%,100%{transform:translate(10px,-50px) rotate(90deg)}
+}
+@keyframes shake{0%,100%{transform:none}20%{transform:translate(-5px,2px)}40%{transform:translate(5px,-2px)}60%{transform:translate(-3px,1px)}80%{transform:translate(2px,0)}}
+@keyframes burst{0%{opacity:0;transform:scale(.3)}20%{opacity:1;transform:scale(1.15)}100%{opacity:0;transform:scale(1)}}
+@keyframes kopop{from{opacity:0;transform:scale(.3) rotate(-18deg)}70%{opacity:1;transform:scale(1.2) rotate(-6deg)}to{opacity:1;transform:scale(1) rotate(-8deg)}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes fadeOut{from{opacity:1}to{opacity:0}}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.card{
+  position:relative;overflow:hidden;
+  min-height:180px;padding:20px 20px;
+  display:grid;place-items:center;align-content:center;gap:8px;
+  background:var(--surface);border:2px solid var(--line);border-radius:28px;
+  text-align:center;
+}
+.word{
+  font-weight:900;letter-spacing:.05em;line-height:1.3;
+  font-size:clamp(2.4rem,12vw,3.8rem);
+  overflow-wrap:anywhere;
+}
+.word.mid{font-size:clamp(2.1rem,10vw,3.1rem)}
+.word.long{font-size:clamp(1.6rem,7vw,2.3rem);letter-spacing:.03em}
+.sub{margin:0;min-height:1.6em;color:var(--muted);font-size:1.1rem}
+
+.mark{
+  position:absolute;inset:0;margin:auto;
+  width:min(74%,280px);height:auto;aspect-ratio:1;
+  pointer-events:none;opacity:0;
+}
+.mark circle,.mark path{
+  fill:none;stroke-width:8;stroke-linecap:round;
+  stroke-dasharray:1;stroke-dashoffset:1;
+}
+.mark .maru{stroke:var(--maru)}
+.mark .batsu{stroke:var(--batsu)}
+.card[data-mark="ok"] .mark,.card[data-mark="ng"] .mark{opacity:.92}
+.card[data-mark="ok"] .maru{animation:draw .6s ease-out forwards}
+.card[data-mark="ng"] .batsu{animation:draw .28s ease-out forwards}
+.card[data-mark="ng"] .batsu:nth-of-type(3){animation-delay:.22s}
+@keyframes draw{to{stroke-dashoffset:0}}
+
+.status{
+  margin:0;min-height:3.4em;text-align:center;font-weight:700;line-height:1.7;
+}
+.status[data-tone="ok"]{color:var(--maru)}
+.status[data-tone="ng"]{color:var(--batsu)}
+
+.controls{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:14px}
+.side{
+  display:grid;justify-items:center;gap:6px;min-height:78px;padding:12px 8px;
+  border:2px solid var(--line);border-radius:22px;background:var(--surface);
+  font-weight:700;font-size:.88rem;cursor:pointer;
+}
+.side svg{width:26px;height:26px}
+.side.primary{background:var(--ink);color:var(--surface);border-color:var(--ink)}
+.side:disabled{opacity:.45;cursor:not-allowed}
+
+.mic-wrap{display:grid;justify-items:center;gap:10px}
+.mic{
+  position:relative;width:112px;height:112px;border-radius:50%;border:0;
+  background:var(--mic-bg);color:var(--mic-fg);cursor:pointer;
+  display:grid;place-items:center;
+  box-shadow:0 7px 0 var(--shadow);
+  transition:transform .08s,box-shadow .08s,background .2s;
+}
+.mic:active{transform:translateY(5px);box-shadow:0 2px 0 var(--shadow)}
+.mic svg{width:48px;height:48px}
+.mic::after{
+  content:"";position:absolute;inset:-12px;border-radius:50%;
+  border:4px solid var(--listen);opacity:0;pointer-events:none;
+}
+.mic[data-on="true"]{background:var(--listen);color:#13283B}
+.mic[data-on="true"]::after{animation:pulse 1.2s ease-out infinite}
+.mic:disabled{opacity:.4;cursor:not-allowed}
+@keyframes pulse{0%{transform:scale(.85);opacity:.9}100%{transform:scale(1.18);opacity:0}}
+.mic-label{font-weight:700;font-size:.95rem;color:var(--muted)}
+
+.summary{
+  display:grid;justify-items:center;gap:16px;padding:28px 20px;text-align:center;
+  background:var(--surface);border:2px solid var(--line);border-radius:28px;
+}
+.seal{width:min(60%,220px);aspect-ratio:1;position:relative}
+.seal svg{width:100%;height:100%;display:block}
+.seal circle{fill:none;stroke:var(--maru);stroke-width:3.2}
+.seal text{fill:var(--maru);font-weight:900;font-size:26px;font-family:var(--font)}
+.summary h2{margin:0;font-size:1.35rem;font-weight:900}
+.summary p{margin:0;color:var(--muted);line-height:1.7}
+.row{display:flex;flex-wrap:wrap;justify-content:center;gap:10px}
+.btn{
+  border:2px solid var(--line);background:var(--surface);border-radius:999px;
+  padding:11px 20px;font-weight:700;cursor:pointer;
+}
+.btn.primary{background:var(--ink);color:var(--surface);border-color:var(--ink)}
+
+details.settings{
+  background:var(--surface);border:2px solid var(--line);border-radius:20px;padding:4px 16px;
+}
+details.settings summary{cursor:pointer;font-weight:700;padding:12px 0}
+.settings .body{display:grid;gap:14px;padding:4px 0 16px}
+.check{display:flex;align-items:flex-start;gap:10px;line-height:1.6}
+.check input{width:22px;height:22px;margin-top:2px;accent-color:var(--batsu)}
+.check small{display:block;color:var(--muted)}
+textarea{
+  width:100%;min-height:130px;padding:12px;border-radius:14px;
+  border:2px solid var(--line);background:var(--bg);color:var(--ink);
+  font:inherit;line-height:1.6;resize:vertical;
+}
+.hint{margin:0;color:var(--muted);font-size:.88rem;line-height:1.7}
+footer{color:var(--muted);font-size:.82rem;line-height:1.7;text-align:center}
+
+@media (prefers-reduced-motion:reduce){
+  .mark circle,.mark path{stroke-dashoffset:0!important;animation:none!important}
+  .mic[data-on="true"]::after{animation:none;opacity:.6}
+  .dot{transition:none}
+  .kbody,.gbob,.stars,.scene,.kaiju,.glove,.burst,.kotext,.starsw,.eyes,.eyesKO,.mouth,.mouthKO{animation:none!important}
+}
+@media (max-width:380px){
+  .mic{width:96px;height:96px}
+  .controls{gap:8px}
+}
+</style>
+</head>
+<body>
+<main class="app">
+  <header>
+    <h1>はつおん まるばつ</h1>
+    <p>マイクに むかって、ことばを いってみよう</p>
+  </header>
+
+  <p class="notice" id="notice" hidden>
+    このブラウザは おんせいにんしきに たいおうしていません。Chrome（Android・パソコン）か Safari（iPhone・iPad）で ひらいてください。
+  </p>
+
+  <nav class="cats" id="cats" aria-label="カテゴリ"></nav>
+
+  <section id="stage" style="display:grid;gap:18px">
+    <div class="dots" id="dots" aria-label="しんこう"></div>
+
+    <div class="ring" id="ring" data-fx="">
+      <svg class="scene" viewBox="0 0 360 180" preserveAspectRatio="xMidYMax meet" role="img" aria-label="ボクシンググローブが かいじゅうを なぐる えんしゅつ">
+        <g class="ropes"><path d="M0 50H360"/><path d="M0 82H360"/><path d="M0 114H360"/></g>
+
+        <g transform="translate(190 160)">
+          <g class="kaiju"><g class="kbody">
+            <path class="c-body ol" d="M38 -26 Q76 -20 68 -56 Q62 -38 40 -44Z"/>
+            <polygon class="c-spike ol" points="24,-105 37,-93 45,-117"/>
+            <polygon class="c-spike ol" points="42,-86 47,-69 67,-86"/>
+            <polygon class="c-horn ol" points="-26,-104 -34,-136 -8,-110"/>
+            <polygon class="c-horn ol" points="10,-110 26,-138 28,-104"/>
+            <rect class="c-body ol" x="-25" y="-24" width="22" height="24" rx="8"/>
+            <rect class="c-body ol" x="3" y="-24" width="22" height="24" rx="8"/>
+            <ellipse class="c-body ol" cx="0" cy="-60" rx="48" ry="52"/>
+            <ellipse class="c-belly" cx="-4" cy="-44" rx="30" ry="32"/>
+            <ellipse class="c-body ol" cx="-46" cy="-56" rx="14" ry="9" transform="rotate(25 -46 -56)"/>
+            <g class="eyes">
+              <circle class="eye ol" cx="-14" cy="-80" r="11"/>
+              <circle class="eye ol" cx="14" cy="-80" r="11"/>
+              <circle class="pupil" cx="-17" cy="-79" r="5"/>
+              <circle class="pupil" cx="11" cy="-79" r="5"/>
+              <path class="brow" d="M-27 -97 L-7 -89 M27 -97 L7 -89"/>
+            </g>
+            <g class="eyesKO">
+              <circle class="eye ol" cx="-14" cy="-80" r="11"/>
+              <circle class="eye ol" cx="14" cy="-80" r="11"/>
+              <path class="xeye" d="M-20 -86 L-8 -74 M-8 -86 L-20 -74 M8 -86 L20 -74 M20 -86 L8 -74"/>
+            </g>
+            <g class="mouth">
+              <path class="mouthfill" d="M-22 -62 Q0 -70 22 -62 Q18 -38 0 -38 Q-18 -38 -22 -62Z"/>
+              <polygon class="teeth" points="-17,-64 -10,-63 -14,-55"/>
+              <polygon class="teeth" points="10,-63 17,-64 14,-55"/>
+              <ellipse class="tongue" cx="0" cy="-43" rx="9" ry="4"/>
+            </g>
+            <g class="mouthKO">
+              <ellipse class="mouthfill" cx="0" cy="-48" rx="10" ry="9"/>
+              <ellipse class="tongue" cx="0" cy="-43" rx="5" ry="3"/>
+            </g>
+          </g></g>
+        </g>
+
+        <rect class="ground" x="0" y="160" width="360" height="20"/>
+        <path class="groundline" d="M0 160H360"/>
+
+        <g class="starsw" transform="translate(285 72)"><g class="stars">
+          <path class="star" transform="translate(20 0)" d="M0 -7 L2 -2 L7 0 L2 2 L0 7 L-2 2 L-7 0 L-2 -2Z"/>
+          <path class="star" transform="translate(-10 17)" d="M0 -7 L2 -2 L7 0 L2 2 L0 7 L-2 2 L-7 0 L-2 -2Z"/>
+          <path class="star" transform="translate(-10 -17)" d="M0 -7 L2 -2 L7 0 L2 2 L0 7 L-2 2 L-7 0 L-2 -2Z"/>
+        </g></g>
+
+        <g class="glove"><g class="gbob">
+          <rect class="arm ol" x="-120" y="89" width="150" height="22" rx="11"/>
+          <rect class="cuff ol" x="22" y="84" width="20" height="32" rx="5"/>
+          <rect class="cuffstripe" x="29" y="85" width="6" height="30"/>
+          <ellipse class="gl ol" cx="72" cy="76" rx="17" ry="10" transform="rotate(-14 72 76)"/>
+          <ellipse class="gl ol" cx="70" cy="100" rx="32" ry="27"/>
+          <ellipse class="gloss" cx="80" cy="90" rx="10" ry="5" transform="rotate(-24 80 90)"/>
+        </g></g>
+
+        <g transform="translate(152 84)"><g class="burst">
+          <polygon class="burst-shape" id="burstPoly" points=""/>
+          <text class="burst-text" x="0" y="6" text-anchor="middle">ドカッ!</text>
+        </g></g>
+
+        <text class="kotext" x="72" y="48" text-anchor="middle">KO!</text>
+      </svg>
+    </div>
+
+    <div class="card" id="card" data-mark="">
+      <div class="word" id="word" lang="ja"></div>
+      <p class="sub" id="sub"></p>
+      <svg class="mark" viewBox="0 0 100 100" aria-hidden="true">
+        <circle class="maru" cx="50" cy="50" r="38" pathLength="1" transform="rotate(-90 50 50)"/>
+        <path class="batsu" d="M24 24 L76 76" pathLength="1"/>
+        <path class="batsu" d="M76 24 L24 76" pathLength="1"/>
+      </svg>
+    </div>
+
+    <p class="status" id="status" role="status" aria-live="polite" data-tone=""></p>
+
+    <div class="controls">
+      <button class="side" id="listen" type="button" aria-label="おてほんを きく">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4Z" fill="currentColor"/><path d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        <span>おてほん</span>
+      </button>
+      <div class="mic-wrap">
+        <button class="mic" id="mic" type="button" data-on="false" aria-label="マイクで はなす">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3" fill="currentColor"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M8.5 21h7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        </button>
+        <span class="mic-label" id="micLabel">おして はなす</span>
+      </div>
+      <button class="side" id="next" type="button">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h12M12 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span id="nextLabel">とばす</span>
+      </button>
+    </div>
+  </section>
+
+  <section class="summary" id="summary" hidden>
+    <div class="seal">
+      <svg viewBox="0 0 100 100" aria-hidden="true">
+        <circle cx="80" cy="50" r="11"/><circle cx="71.2" cy="71.2" r="11"/>
+        <circle cx="50" cy="80" r="11"/><circle cx="28.8" cy="71.2" r="11"/>
+        <circle cx="20" cy="50" r="11"/><circle cx="28.8" cy="28.8" r="11"/>
+        <circle cx="50" cy="20" r="11"/><circle cx="71.2" cy="28.8" r="11"/>
+        <circle cx="50" cy="50" r="20"/>
+        <text id="score" x="50" y="59" text-anchor="middle">0</text>
+      </svg>
+    </div>
+    <h2 id="sumTitle"></h2>
+    <p id="sumText"></p>
+    <div class="row">
+      <button class="btn primary" id="again" type="button">もういちど あそぶ</button>
+    </div>
+  </section>
+
+  <details class="settings">
+    <summary>せってい・じぶんのことば</summary>
+    <div class="body">
+      <label class="check">
+        <input type="checkbox" id="loose">
+        <span>ゆるめに はんてい する<small>ききとりが 1もじ ちがっても ◯ にします（4もじ いじょうのことば）</small></span>
+      </label>
+      <label class="check">
+        <input type="checkbox" id="sound" checked>
+        <span>こうかおん を ならす</span>
+      </label>
+      <div>
+        <label for="custom" style="font-weight:700">じぶんの ことば（1ぎょうに 1つ）</label>
+        <textarea id="custom" placeholder="れい：&#10;せんせい&#10;ともだち&#10;がっこう,学校"></textarea>
+        <p class="hint">「ひょうじ,べつのかきかた」のように カンマで くぎると、かんじなど ほかの かきかたも せいかいに なります。</p>
+      </div>
+      <div class="row" style="justify-content:flex-start;align-items:center">
+        <button class="btn" id="saveCustom" type="button">ほぞんして あそぶ</button>
+        <span class="hint" id="saved" role="status"></span>
+      </div>
+    </div>
+  </details>
+
+  <footer>おんせいにんしきは ブラウザの きのうを つかいます。<br>マイクの きょかを きかれたら「きょか」を えらんでください。</footer>
+</main>
+
+<script>
+(() => {
+'use strict';
+const $ = (id) => document.getElementById(id);
+
+/* ---------- 保存（使えない環境でも動く） ---------- */
+const store = {
+  get(k, d){ try{ const v = localStorage.getItem('hatsuon.' + k); return v === null ? d : JSON.parse(v); }catch(e){ return d; } },
+  set(k, v){ try{ localStorage.setItem('hatsuon.' + k, JSON.stringify(v)); }catch(e){} }
+};
+
+/* ---------- ことば正規化：カタカナ→ひらがな、記号と空白を除く ---------- */
+const toHira = (s) => s.replace(/[ァ-ヶ]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0x60));
+const norm = (s) => toHira(String(s).normalize('NFKC')).toLowerCase()
+  .replace(/[\s、。，．,.!?！？「」『』（）()・〜~"'“”]/g, '');
+
+function lev(a, b){
+  const m = a.length, n = b.length;
+  if(!m) return n; if(!n) return m;
+  let prev = Array.from({length: n + 1}, (_, j) => j);
+  for(let i = 1; i <= m; i++){
+    const cur = [i];
+    for(let j = 1; j <= n; j++){
+      cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    }
+    prev = cur;
+  }
+  return prev[n];
+}
+
+/* ---------- お題。先頭が表示、あとは「正解として認める別の書き方」 ---------- */
+const RAW = [
+  {id:'animals', label:'どうぶつ', words:[
+    ['いぬ','犬'],['ねこ','猫'],['うさぎ','兎'],['ぞう','象'],['きりん','麒麟'],['さる','猿'],
+    ['くま','熊'],['ぱんだ'],['らいおん'],['かめ','亀'],['ひよこ'],['ことり','小鳥']
+  ]},
+  {id:'foods', label:'たべもの', words:[
+    ['りんご','林檎'],['みかん','蜜柑'],['ばなな'],['ぶどう','葡萄'],['すいか','西瓜'],['たまご','卵'],
+    ['おにぎり','お握り'],['ぱん'],['ごはん','ご飯','御飯'],['さかな','魚'],['やさい','野菜'],['ぎゅうにゅう','牛乳']
+  ]},
+  {id:'greet', label:'あいさつ', words:[
+    ['おはようございます'],['ありがとう','有難う'],['こんにちは','今日は'],['こんばんは','今晩は'],
+    ['いただきます','頂きます'],['ごちそうさま','ごちそうさまでした','御馳走様'],['さようなら'],
+    ['いってきます','行ってきます'],['ただいま'],['おやすみなさい','お休みなさい'],['ごめんなさい','御免なさい']
+  ]},
+  {id:'twister', label:'はやくちことば', words:[
+    ['なまむぎ なまごめ なまたまご','生麦生米生卵'],
+    ['あかまきがみ あおまきがみ きまきがみ','赤巻紙青巻紙黄巻紙'],
+    ['とうきょうとっきょきょかきょく','東京特許許可局'],
+    ['すもももももももものうち','李も桃も桃のうち'],
+    ['となりのきゃくは よくかきくうきゃくだ','隣の客はよく柿食う客だ']
+  ]}
+];
+
+function mk(entry){
+  const [d, ...alts] = entry;
+  const kanji = alts.find((a) => /[一-鿿]/.test(a)) || '';
+  return {d, kanji, read: toHira(d).replace(/\s/g, ''), acc: Array.from(new Set([d, ...alts].map(norm)))};
+}
+function parseCustom(t){
+  return String(t).split(/\r?\n/)
+    .map((l) => l.split(/[,，、]/).map((s) => s.trim()).filter(Boolean))
+    .filter((a) => a.length);
+}
+function buildBanks(){
+  const list = RAW.map((b) => ({id: b.id, label: b.label, words: b.words.map(mk)}));
+  const custom = parseCustom(customText);
+  if(custom.length) list.push({id: 'custom', label: 'じぶんの ことば', words: custom.map(mk)});
+  return list;
+}
+
+/* ---------- 状態 ---------- */
+const ROUND = 10;
+let soundOn = store.get('sound', true);
+let loose = store.get('loose', false);
+let customText = store.get('custom', '');
+let bankId = store.get('bank', 'animals');
+let banks = buildBanks();
+let queue = [], idx = 0, results = [], state = 'ready';
+let rec = null, listening = false, session = 0, ngTimer = 0, fxTimers = [];
+
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+function shuffle(a){
+  for(let i = a.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+/* ---------- 効果音（ファイル不要） ---------- */
+let ac = null;
+function getAc(){
+  ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+  if(ac.state === 'suspended'){ ac.resume(); }
+  return ac;
+}
+function tone(freqs, dur, type, vol){
+  if(!soundOn) return;
+  try{
+    getAc();
+    const t0 = ac.currentTime;
+    freqs.forEach((f, i) => {
+      const o = ac.createOscillator(), g = ac.createGain(), t = t0 + i * dur;
+      o.type = type; o.frequency.value = f;
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.linearRampToValueAtTime(vol, t + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur * 1.7);
+      o.connect(g); g.connect(ac.destination);
+      o.start(t); o.stop(t + dur * 1.8);
+    });
+  }catch(e){}
+}
+const soundOk = () => tone([784, 988, 1319], 0.13, 'sine', 0.2);
+const soundNg = () => tone([330, 262], 0.18, 'triangle', 0.14);
+/* 効果音は音声ファイルを使わず、ノイズと低音をその場で合成する */
+function playNoise(t, dur, type, f0, f1, vol, q){
+  const c = ac, n = Math.floor(c.sampleRate * dur);
+  const buf = c.createBuffer(1, n, c.sampleRate), d = buf.getChannelData(0);
+  for(let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
+  const s = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain();
+  s.buffer = buf;
+  f.type = type;
+  f.frequency.setValueAtTime(f0, t);
+  f.frequency.exponentialRampToValueAtTime(f1, t + dur);
+  if(q) f.Q.value = q;
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.linearRampToValueAtTime(vol, t + Math.min(0.015, dur / 3));
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  s.connect(f); f.connect(g); g.connect(c.destination);
+  s.start(t); s.stop(t + dur + 0.02);
+}
+function playBoom(t, f0, f1, dur, vol){
+  const c = ac, o = c.createOscillator(), g = c.createGain();
+  o.type = 'sine';
+  o.frequency.setValueAtTime(f0, t);
+  o.frequency.exponentialRampToValueAtTime(f1, t + dur * 0.8);
+  g.gain.setValueAtTime(vol, t);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(g); g.connect(c.destination);
+  o.start(t); o.stop(t + dur + 0.02);
+}
+/* グローブが飛び出す風切り音 */
+function whoosh(){
+  if(!soundOn) return;
+  try{ getAc(); playNoise(ac.currentTime, 0.26, 'bandpass', 500, 2800, 0.35, 1.2); }catch(e){}
+}
+/* パンチが当たった音：低いドスン + 打撃のバシッ */
+function thump(){
+  if(!soundOn) return;
+  try{
+    getAc();
+    const t = ac.currentTime;
+    playBoom(t, 220, 40, 0.32, 0.7);
+    playNoise(t, 0.12, 'lowpass', 6000, 600, 0.5);
+    playNoise(t, 0.05, 'highpass', 2500, 2500, 0.3);
+  }catch(e){}
+}
+/* 怪獣が地面に倒れた音 */
+function landThud(){
+  if(!soundOn) return;
+  try{
+    getAc();
+    const t = ac.currentTime;
+    playBoom(t, 120, 35, 0.36, 0.55);
+    playNoise(t, 0.16, 'lowpass', 900, 200, 0.45);
+  }catch(e){}
+}
+
+/* ---------- お手本の読み上げ ---------- */
+function speak(text){
+  if(!('speechSynthesis' in window)) return;
+  try{
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = 'ja-JP'; u.rate = 0.8;
+    const v = speechSynthesis.getVoices().find((x) => x.lang && x.lang.toLowerCase().startsWith('ja'));
+    if(v) u.voice = v;
+    speechSynthesis.speak(u);
+  }catch(e){}
+}
+
+/* ---------- 画面更新 ---------- */
+function setStatus(text, tone){
+  const s = $('status');
+  s.textContent = text;
+  s.dataset.tone = tone || '';
+}
+function setMark(v){
+  const c = $('card');
+  c.dataset.mark = '';
+  if(v){ void c.offsetWidth; c.dataset.mark = v; }
+}
+/* 怪獣の演出：ring の data-fx を切り替えてCSSアニメを再生 */
+function setFx(v){
+  const r = $('ring');
+  r.dataset.fx = '';
+  if(v){ void r.getBoundingClientRect(); r.dataset.fx = v; }
+}
+const PALETTES = [
+  ['#67B96B', '#CDEBB0', '#F2A33A'],
+  ['#9B7BD6', '#E4D6F7', '#F2C94C'],
+  ['#F08A4B', '#FBD9B0', '#5B8DEF'],
+  ['#3FB5B0', '#BFEDEA', '#F26B8A'],
+  ['#E56F9B', '#F8D2E0', '#6C63D8']
+];
+let palIdx = -1;
+function pickKaiju(){
+  let i;
+  do{ i = Math.floor(Math.random() * PALETTES.length); }while(i === palIdx);
+  palIdx = i;
+  const s = $('ring').style, p = PALETTES[i];
+  s.setProperty('--k-body', p[0]);
+  s.setProperty('--k-belly', p[1]);
+  s.setProperty('--k-spike', p[2]);
+}
+function setMic(on){
+  $('mic').dataset.on = on ? 'true' : 'false';
+  $('micLabel').textContent = on ? 'きいているよ' : 'おして はなす';
+  $('mic').setAttribute('aria-label', on ? 'きくのを とめる' : 'マイクで はなす');
+}
+function setNext(){
+  const last = idx === queue.length - 1;
+  $('nextLabel').textContent = state === 'ok' ? (last ? 'けっか' : 'つぎへ') : 'とばす';
+  $('next').classList.toggle('primary', state === 'ok');
+}
+function renderDots(){
+  const d = $('dots');
+  d.textContent = '';
+  queue.forEach((_, i) => {
+    const s = document.createElement('span');
+    s.className = 'dot' + (results[i] ? ' ' + results[i] : '') + (i === idx ? ' now' : '');
+    d.appendChild(s);
+  });
+}
+function renderCats(){
+  const nav = $('cats');
+  nav.textContent = '';
+  banks.forEach((b) => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'chip';
+    btn.textContent = b.label;
+    btn.setAttribute('aria-pressed', String(b.id === bankId));
+    btn.addEventListener('click', () => { bankId = b.id; store.set('bank', bankId); renderCats(); startRound(); });
+    nav.appendChild(btn);
+  });
+}
+
+function stopListening(){
+  session++;
+  if(rec){ try{ rec.abort(); }catch(e){} }
+  listening = false;
+  setMic(false);
+}
+
+function showWord(){
+  const w = queue[idx];
+  state = 'ready';
+  clearTimeout(ngTimer);
+  fxTimers.forEach(clearTimeout);
+  fxTimers = [];
+  setMark('');
+  pickKaiju();
+  setFx('enter');
+  const el = $('word');
+  const len = w.d.replace(/\s/g, '').length;
+  el.className = 'word' + (len > 12 ? ' long' : len > 6 ? ' mid' : '');
+  el.textContent = w.d;
+  $('sub').textContent = w.kanji;
+  setStatus(SR ? 'マイクを おして、ことばを いってね' : '', '');
+  setNext();
+  renderDots();
+}
+
+function startRound(){
+  stopListening();
+  const b = banks.find((x) => x.id === bankId) || banks[0];
+  bankId = b.id;
+  queue = shuffle(b.words.slice()).slice(0, ROUND);
+  idx = 0;
+  results = queue.map(() => null);
+  $('summary').hidden = true;
+  $('stage').hidden = false;
+  showWord();
+}
+
+function showSummary(){
+  stopListening();
+  const n = results.filter((r) => r === 'ok').length;
+  const ratio = n / queue.length;
+  $('stage').hidden = true;
+  $('summary').hidden = false;
+  $('score').textContent = n;
+  $('sumTitle').textContent = n + ' / ' + queue.length + ' もん せいかい';
+  $('sumText').textContent =
+    ratio >= 0.9 ? 'すごい！ ほとんど ぜんぶ いえたね。' :
+    ratio >= 0.6 ? 'いいね！ その ちょうし。' :
+    ratio >= 0.3 ? 'もうすこし！ おてほんを きいて、もういちど。' :
+                   'ゆっくり いってみよう。おてほんを きいてから ちょうせん！';
+}
+
+function goNext(){
+  stopListening();
+  if(state !== 'ok') results[idx] = 'skip';
+  idx++;
+  if(idx >= queue.length) showSummary(); else showWord();
+}
+
+/* ---------- 判定 ---------- */
+function judge(alts){
+  const w = queue[idx];
+  const hs = alts.map(norm).filter(Boolean);
+  for(const h of hs){ if(w.acc.includes(h)) return true; }
+  if(loose){
+    for(const h of hs){
+      for(const a of w.acc){
+        if(a.length >= 3 && h.includes(a)) return true;
+        const tol = a.length >= 9 ? 2 : a.length >= 4 ? 1 : 0;
+        if(tol && lev(h, a) <= tol) return true;
+      }
+    }
+  }
+  return false;
+}
+
+function finish(alts){
+  const heard = (alts.find((a) => a && a.trim()) || '').trim();
+  const ok = judge(alts);
+  if(ok){
+    results[idx] = 'ok';
+    state = 'ok';
+    setMark('ok');
+    setFx('ko');
+    fxTimers.push(
+      setTimeout(whoosh, 140),
+      setTimeout(thump, 405),
+      setTimeout(landThud, 1300),
+      setTimeout(soundOk, 1550)
+    );
+    setStatus('せいかい！「' + heard + '」って きこえたよ', 'ok');
+  }else{
+    state = 'ng';
+    setMark('ng');
+    setFx('taunt');
+    soundNg();
+    setStatus('「' + heard + '」って きこえたよ。もういちど いってみよう', 'ng');
+    clearTimeout(ngTimer);
+    ngTimer = setTimeout(() => { if(state === 'ng') setMark(''); }, 1600);
+  }
+  setNext();
+  renderDots();
+}
+
+function noResult(code){
+  const msg = {
+    'not-allowed': 'マイクが つかえません。ブラウザの せっていで マイクを きょかしてください。',
+    'service-not-allowed': 'マイクが つかえません。ブラウザの せっていで マイクを きょかしてください。',
+    'audio-capture': 'マイクが みつかりません。マイクを つないでください。',
+    'network': 'ネットに つながっていません。おんせいにんしきには ネットが ひつようです。',
+    'language-not-supported': 'にほんごの おんせいにんしきが つかえません。'
+  }[code];
+  setStatus(msg || 'こえが きこえなかったよ。もういちど おしてね', msg ? 'ng' : '');
+}
+
+/* ---------- 音声認識 ---------- */
+function listen(){
+  if(!SR) return;
+  try{ getAc(); }catch(e){}
+  if(listening){ try{ rec.stop(); }catch(e){} return; }
+  if(state === 'ok'){ setStatus('せいかい！「つぎへ」で すすもう', 'ok'); return; }
+  try{ speechSynthesis.cancel(); }catch(e){}
+  clearTimeout(ngTimer);
+  setMark('');
+  const my = ++session;
+  let judged = false, lastInterim = '', errCode = '';
+  rec = new SR();
+  rec.lang = 'ja-JP';
+  rec.interimResults = true;
+  rec.maxAlternatives = 5;
+  rec.continuous = false;
+  rec.onstart = () => { if(my !== session) return; listening = true; setMic(true); setStatus('いってね…', ''); };
+  rec.onresult = (e) => {
+    if(my !== session) return;
+    let interim = '';
+    for(let i = e.resultIndex; i < e.results.length; i++){
+      const r = e.results[i];
+      if(r.isFinal){
+        const alts = [];
+        for(let j = 0; j < r.length; j++) alts.push(r[j].transcript);
+        if(alts.some((a) => a && a.trim())){ judged = true; finish(alts); }
+      }else{
+        interim += r[0].transcript;
+      }
+    }
+    if(!judged && interim){ lastInterim = interim; setStatus('きいているよ…「' + interim + '」', ''); }
+  };
+  rec.onerror = (e) => { errCode = e.error || ''; };
+  rec.onend = () => {
+    if(my !== session) return;
+    listening = false;
+    setMic(false);
+    if(judged || errCode === 'aborted') return;
+    if(lastInterim && !errCode){ finish([lastInterim]); return; }
+    noResult(errCode);
+  };
+  try{ rec.start(); }catch(e){ listening = false; setMic(false); setStatus('マイクを はじめられませんでした。もういちど おしてね', 'ng'); }
+}
+
+/* ---------- イベント ---------- */
+$('mic').addEventListener('click', listen);
+$('next').addEventListener('click', goNext);
+$('listen').addEventListener('click', () => { if(queue[idx]) speak(queue[idx].read); });
+$('again').addEventListener('click', startRound);
+
+$('loose').checked = loose;
+$('sound').checked = soundOn;
+$('loose').addEventListener('change', (e) => { loose = e.target.checked; store.set('loose', loose); });
+$('sound').addEventListener('change', (e) => { soundOn = e.target.checked; store.set('sound', soundOn); if(soundOn) soundOk(); });
+
+$('custom').value = customText;
+$('saveCustom').addEventListener('click', () => {
+  customText = $('custom').value;
+  store.set('custom', customText);
+  banks = buildBanks();
+  const n = parseCustom(customText).length;
+  if(n){ bankId = 'custom'; store.set('bank', bankId); }
+  else if(bankId === 'custom'){ bankId = banks[0].id; store.set('bank', bankId); }
+  renderCats();
+  startRound();
+  $('saved').textContent = n ? n + 'こ ほぞんしました' : 'じぶんの ことばは からです';
+  window.scrollTo({top: 0, behavior: 'smooth'});
+});
+
+if(!SR){
+  $('notice').hidden = false;
+  $('mic').disabled = true;
+}
+(() => {
+  const pts = [];
+  for(let i = 0; i < 16; i++){
+    const r = i % 2 ? 26 : 42, a = i * Math.PI / 8;
+    pts.push((Math.cos(a) * r).toFixed(1) + ',' + (Math.sin(a) * r).toFixed(1));
+  }
+  $('burstPoly').setAttribute('points', pts.join(' '));
+})();
+if(!banks.some((b) => b.id === bankId)) bankId = banks[0].id;
+renderCats();
+startRound();
+})();
+</script>
+</body>
+</html>

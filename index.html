@@ -4,6 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>はつおん まるばつ</title>
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-title" content="はつおん">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700;900&display=swap" rel="stylesheet">
@@ -559,18 +562,57 @@ function tone(freqs, dur, type, vol){
 }
 const soundOk = () => tone([784, 988, 1319], 0.13, 'sine', 0.2);
 const soundNg = () => tone([330, 262], 0.18, 'triangle', 0.14);
+/* 効果音は音声ファイルを使わず、ノイズと低音をその場で合成する */
+function playNoise(t, dur, type, f0, f1, vol, q){
+  const c = ac, n = Math.floor(c.sampleRate * dur);
+  const buf = c.createBuffer(1, n, c.sampleRate), d = buf.getChannelData(0);
+  for(let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
+  const s = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain();
+  s.buffer = buf;
+  f.type = type;
+  f.frequency.setValueAtTime(f0, t);
+  f.frequency.exponentialRampToValueAtTime(f1, t + dur);
+  if(q) f.Q.value = q;
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.linearRampToValueAtTime(vol, t + Math.min(0.015, dur / 3));
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  s.connect(f); f.connect(g); g.connect(c.destination);
+  s.start(t); s.stop(t + dur + 0.02);
+}
+function playBoom(t, f0, f1, dur, vol){
+  const c = ac, o = c.createOscillator(), g = c.createGain();
+  o.type = 'sine';
+  o.frequency.setValueAtTime(f0, t);
+  o.frequency.exponentialRampToValueAtTime(f1, t + dur * 0.8);
+  g.gain.setValueAtTime(vol, t);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(g); g.connect(c.destination);
+  o.start(t); o.stop(t + dur + 0.02);
+}
+/* グローブが飛び出す風切り音 */
+function whoosh(){
+  if(!soundOn) return;
+  try{ getAc(); playNoise(ac.currentTime, 0.26, 'bandpass', 500, 2800, 0.35, 1.2); }catch(e){}
+}
+/* パンチが当たった音：低いドスン + 打撃のバシッ */
 function thump(){
   if(!soundOn) return;
   try{
     getAc();
-    const t = ac.currentTime, o = ac.createOscillator(), g = ac.createGain();
-    o.type = 'sine';
-    o.frequency.setValueAtTime(190, t);
-    o.frequency.exponentialRampToValueAtTime(45, t + 0.22);
-    g.gain.setValueAtTime(0.5, t);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.28);
-    o.connect(g); g.connect(ac.destination);
-    o.start(t); o.stop(t + 0.3);
+    const t = ac.currentTime;
+    playBoom(t, 220, 40, 0.32, 0.7);
+    playNoise(t, 0.12, 'lowpass', 6000, 600, 0.5);
+    playNoise(t, 0.05, 'highpass', 2500, 2500, 0.3);
+  }catch(e){}
+}
+/* 怪獣が地面に倒れた音 */
+function landThud(){
+  if(!soundOn) return;
+  try{
+    getAc();
+    const t = ac.currentTime;
+    playBoom(t, 120, 35, 0.36, 0.55);
+    playNoise(t, 0.16, 'lowpass', 900, 200, 0.45);
   }catch(e){}
 }
 
@@ -739,7 +781,12 @@ function finish(alts){
     state = 'ok';
     setMark('ok');
     setFx('ko');
-    fxTimers.push(setTimeout(thump, 400), setTimeout(soundOk, 950));
+    fxTimers.push(
+      setTimeout(whoosh, 140),
+      setTimeout(thump, 405),
+      setTimeout(landThud, 1300),
+      setTimeout(soundOk, 1550)
+    );
     setStatus('せいかい！「' + heard + '」って きこえたよ', 'ok');
   }else{
     state = 'ng';
